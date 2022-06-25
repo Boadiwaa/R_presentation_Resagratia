@@ -1,0 +1,96 @@
+---
+title: "General Overview of Salaries Dataset"
+author: "Resagratia R Warriors"
+date: '2022-06-25'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(gtsummary)
+library(scales)
+library(ggthemes)
+library(gt)
+library(carData)
+library(tidyverse)
+
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, echo = FALSE)
+```
+
+## Data Cleaning
+```{r}
+dataset<-Salaries
+
+dataset<- dataset %>% 
+  mutate(
+    discipline = fct_recode(discipline, 
+      "Theoretical Department" = "A", 
+      "Applied Department" = "B"),
+    rank = fct_recode(rank, 
+                      "Assistant Professor" = "AsstProf", 
+                      "Associate Professor" = "AssocProf",
+                      "Professor" = "Prof")
+          )
+dataset <- dataset %>% rename_with(toupper)
+dataset <- dataset %>% rename("YEARS since PhD" = YRS.SINCE.PHD)
+
+currency_fmt <- function(x) label_number_si(accuracy=0.1,prefix="$")(x)
+```
+
+## Table 1
+
+Preliminary analysis of the Salaries dataset
+
+```{r}
+dataset %>% 
+  tbl_summary(label = list(
+            YRS.SERVICE ~ "YEARS OF SERVICE",
+            SALARY ~ "SALARY (in dollars)"),
+            digits= starts_with("SALARY") ~ currency_fmt )%>%  
+bold_labels() %>% 
+  modify_caption(
+    "**Resagratia R Session**") %>% #show_header_names()
+  as_gt() %>% tab_style(locations = cells_body(
+    columns = everything(),
+    rows=c(4,7,12)),
+    # rows=variable=="RANK"),
+    style=list(cell_fill(color="firebrick"),
+    cell_text(color="white"))
+    ) %>% tab_header(subtitle= "Data Digest Episode 8",
+                     title="Table 1: General Overview of the Salaries Dataset")
+
+```
+ 
+
+## Graph 1
+
+This compares the salaries of male and Female professors, years after their PhDs.
+
+```{r }
+dataset %>% ggplot(aes(x=`YEARS since PhD`, y=SALARY, color=SEX))+ 
+  geom_point()+geom_smooth(method=lm, se=F)+
+ theme_wsj() +  scale_color_manual(values=c("red","black"))+
+  labs(title="Salary trends per number 
+       of years post-PhD",
+       subtitle="Dataset from carData package")+
+  scale_y_continuous(labels = scales::dollar_format())+
+  theme(legend.position = "bottom")
+
+```
+
+## Table 2
+
+Here we find the median salary per rank.
+
+```{r}
+  
+dataset %>% group_by(RANK) %>%
+  summarize("Median Salary" = median(SALARY)) %>%
+  mutate("Median Salary" = label_number_si(accuracy = 0.1, prefix = "$")(`Median Salary`)) %>% 
+  gt() %>% 
+  tab_source_note(source_note = "Data Source: carData package") %>% 
+  cols_label(
+    RANK = md("**RANK**"),
+    `Median Salary`= md("**Median Salary**")
+  )
+```
+
